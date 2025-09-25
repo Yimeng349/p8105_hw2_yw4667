@@ -6,7 +6,6 @@ date: "2025-09-24"
 
 ```{r set up}
 library(tidyverse)
-library(dplyr)
 options(tibble.print_min = 5)
 ```
 
@@ -121,9 +120,19 @@ unemployment =
 ```
 ## 1.4 join datasets
 ```{r}
-datasets = 
+dataset_merged = 
   full_join(pols_month, snp, by = c("year","month")) |>
   full_join(unemployment, by = c("year","month"))
-datasets
+dataset_merged
 ```
+
+## 1.5 descriptions
+
+The first dataset(pols_month)contained information about the political composition of government by month, including the number of Republican and Democratic governors, senators, representatives, and the political party of the sitting president. The data was restructured to create a single variable indicating whether the president was Democratic or Republican for each time period.
+
+The second dataset(snp)contained stock market index closing values by date. The dates were reformatted and years were converted from 2-digit to 4-digit format (with years ≥50 treated as 1950s-1990s and years <50 as 2000s-2040s).
+
+The third dataset(unemployment)contained monthly unemployment percentages by year in wide format, which was pivoted to long format with separate month and unemployment rate columns.
+
+The final dataset(dataset_merged)combined all three sources, using full joins on year and month variables. It spans multiple decades and includes key variables such as year, month, president (party affiliation), numbers of Republican and Democratic officials in various government positions (gov_gop, sen_gop, rep_gop, gov_dem, sen_dem, rep_dem), closing values (close), and unemployment rates (unemployment), which provided a comprehensive view of political composition, economic indicators, and market performance over time, allowing for analysis of relationships between political control, stock market performance, and unemployment rates.
 
