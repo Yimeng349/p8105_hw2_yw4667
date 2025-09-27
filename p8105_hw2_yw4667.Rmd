@@ -6,6 +6,7 @@ date: "2025-09-24"
 
 ```{r set up}
 library(tidyverse)
+library(readxl)
 options(tibble.print_min = 5)
 ```
 
@@ -118,21 +119,82 @@ unemployment =
     year = as.factor(year)) |>
     select(year,month,everything())
 ```
-## 1.4 join datasets
+## 1.4 dataset1 merged
 ```{r}
-dataset_merged = 
+dataset1_merged = 
   full_join(pols_month, snp, by = c("year","month")) |>
   full_join(unemployment, by = c("year","month"))
-dataset_merged
 ```
 
 ## 1.5 descriptions
 
-The first dataset(pols_month)contained information about the political composition of government by month, including the number of Republican and Democratic governors, senators, representatives, and the political party of the sitting president. The data was restructured to create a single variable indicating whether the president was Democratic or Republican for each time period.
+The first dataset`pols_month`contained information about the political composition of government by month, including the number of Republican and Democratic governors, senators, representatives, and the political party of the sitting president. The data was restructured to create a single variable indicating whether the president was Democratic or Republican for each time period.
 
-The second dataset(snp)contained stock market index closing values by date. The dates were reformatted and years were converted from 2-digit to 4-digit format (with years ≥50 treated as 1950s-1990s and years <50 as 2000s-2040s).
+The second dataset`snp`contained stock market index closing values by date. The dates were reformatted and years were converted from 2-digit to 4-digit format (with years ≥50 treated as 1950s-1990s and years <50 as 2000s-2040s).
 
-The third dataset(unemployment)contained monthly unemployment percentages by year in wide format, which was pivoted to long format with separate month and unemployment rate columns.
+The third dataset`unemployment`contained monthly unemployment percentages by year in wide format, which was pivoted to long format with sxeparate month and unemployment rate columns.
 
-The final dataset(dataset_merged)combined all three sources, using full joins on year and month variables. It spans multiple decades and includes key variables such as year, month, president (party affiliation), numbers of Republican and Democratic officials in various government positions (gov_gop, sen_gop, rep_gop, gov_dem, sen_dem, rep_dem), closing values (close), and unemployment rates (unemployment), which provided a comprehensive view of political composition, economic indicators, and market performance over time, allowing for analysis of relationships between political control, stock market performance, and unemployment rates.
+The final dataset`dataset1_merged`combined all three sources, using full joins on year and month variables. It spans multiple decades and includes key variables such as `year`, `month`, `president` (party affiliation), numbers of Republican and Democratic officials in various government positions (`gov_gop`, `sen_gop`, `rep_gop`, `gov_dem`, `sen_dem`, `rep_dem`), closing values (`close`), and unemployment rates (`unemployment`), which provided a comprehensive view of political composition, economic indicators, and market performance over time, allowing for analysis of relationships between political control, stock market performance, and unemployment rates.
+
+
+# Problem 2
+## 2.1 Mr. Trash Wheel sheet
+```{r}
+Mr_Trash_wheel = 
+  read_excel(
+    "./trashwheel_datasets/202409 Trash Wheel Collection Data.xlsx",
+    sheet = 1,
+    na = c("NA", "", "."),
+    skip = 1) |>
+  janitor::clean_names() |>
+  drop_na(dumpster) |>
+  mutate(sports_balls_rounded = round(sports_balls))|>
+  select(-sports_balls,-x15,-x16) |>
+  mutate(sports_balls_rounded = as.integer(sports_balls_rounded)) |>
+  mutate(year = as.double(year))
+```
+
+## 2.2 Professor Trash Wheel sheet
+```{r}
+Prof_Trash_wheel = 
+  read_excel(
+    "./trashwheel_datasets/202409 Trash Wheel Collection Data.xlsx",
+    sheet = 2,
+    na = c("NA", "", "."),
+    skip = 1) |>
+  janitor::clean_names() |>
+  drop_na(dumpster)
+```
+
+## 2.3 Gwynnda sheet
+```{r}
+Gwynnda = 
+  read_excel(
+    "./trashwheel_datasets/202409 Trash Wheel Collection Data.xlsx",
+    sheet = 3,
+    na = c("NA", "", "."),
+    skip = 1) |>
+  janitor::clean_names() |>
+  drop_na(dumpster) 
+```
+
+## 2.4 dataset2 merged
+```{r}
+dataset2_merged = 
+  full_join(Mr_Trash_wheel, Prof_Trash_wheel, by = c("dumpster","month","year","date","weight_tons","volume_cubic_yards","plastic_bottles","polystyrene","cigarette_butts","plastic_bags","wrappers","homes_powered")) |>
+  full_join(Gwynnda, by = c("dumpster","month","year","date","weight_tons","volume_cubic_yards","plastic_bottles","polystyrene","cigarette_butts","plastic_bags","wrappers","homes_powered"))
+```
+
+## 2.5 descriptions
+The resulting dataset contains information from all three Trash Wheel collectors (`Mr_Trash_wheel`, `Prof_Trash_wheel`, and `Gwynnda`) with 802 observations and 15 variables. Every observation has its identical variables `dumpster`,`month`,`year`,`date`,`weight_tons`,`volume_cubic_yards`,`plastic_bottles`,`polystyrene`,`cigarette_butts`,`plastic_bags`,`wrappers`,`homes_powered`,meanwhile some of the observations has the `glass_bottles`,`sports_balls`.
+```{r}
+Prof_Trash_wheel |>
+  drop_na(weight_tons) |>
+  summarize(total_weight_tons = sum(weight_tons))
+```
+```{r}
+Gwynnda|>
+  filter(year == "2022", month == "June") |>
+  summarize(total_cigarette_butts = sum(cigarette_butts))
+```
 
