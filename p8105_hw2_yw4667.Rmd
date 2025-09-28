@@ -187,14 +187,118 @@ dataset2_merged =
 
 ## 2.5 descriptions
 The resulting dataset contains information from all three Trash Wheel collectors (`Mr_Trash_wheel`, `Prof_Trash_wheel`, and `Gwynnda`) with 802 observations and 15 variables. Every observation has its identical variables `dumpster`,`month`,`year`,`date`,`weight_tons`,`volume_cubic_yards`,`plastic_bottles`,`polystyrene`,`cigarette_butts`,`plastic_bags`,`wrappers`,`homes_powered`,meanwhile some of the observations has the `glass_bottles`,`sports_balls`.
+
+### 2.5.1 total weight tons (Professor Trash Wheel)
 ```{r}
 Prof_Trash_wheel |>
   drop_na(weight_tons) |>
   summarize(total_weight_tons = sum(weight_tons))
 ```
+
+### 2.5.2 total cigarette butts (Gwynnda June 2022)
 ```{r}
 Gwynnda|>
   filter(year == "2022", month == "June") |>
   summarize(total_cigarette_butts = sum(cigarette_butts))
 ```
 
+
+
+# Problem 3
+## 3.1 zip codes dataset
+```{r}
+zip_codes = 
+  read_csv(
+    "./zillow_data/Zip Codes.csv",
+    na = c("NA", "", ".")) |>
+  janitor::clean_names() |>
+  separate(file_date, into = c("month","day","year"), sep = "/") |>
+  select(-state_fips,-county_code) |>
+  mutate(zip_code = as.character(zip_code)) |>
+  arrange(zip_code, year,month,day) |>
+  mutate(year = if_else(year == "07", "2007", year)) |>
+  select(county,zip_code,year,month,day,everything())
+```
+
+## 3.2 zori dataset
+```{r}
+zori = 
+  read_csv(
+    "./zillow_data/Zip_zori_uc_sfrcondomfr_sm_month_NYC.csv",
+    na = c("NA", "", ".")) |>
+  janitor::clean_names() |>
+  rename(zip_code = region_name,county = county_name) |>
+  mutate(zip_code = as.character(zip_code))
+```
+
+## 3.3 zori rent price dataset
+```{r}
+zori_rent_price =
+  zori |>
+  mutate(county = str_remove(county, " County")) |>
+  pivot_longer(
+    cols = starts_with("x"),
+    names_to = "date", 
+    values_to = "rent_price",
+    names_prefix = "x"
+  ) |>
+  mutate(zip_code = as.character(zip_code)) |>
+  filter(!is.na(rent_price)) |>
+  arrange(zip_code, date) |>
+  separate(date, into = c("year","month","day"), sep = "_") |>
+  select(county,zip_code,year,month,day,everything())
+```
+
+## 3.4 dataset3 merged
+```{r}
+dataset3_merged = 
+  full_join(zip_codes,zori_rent_price,by = c("zip_code","county","year","month","day"))
+dataset3_merged
+```
+
+## 3.5 descriptions
+The resulting dataset contains information from two zillow datasets (`zip_codes`and`zori`) with 10772 observations and 15 variables. Every observation has its identical variables `county`,`zip_code`,`month`,`year`,`day`, and some other variables such as`county_fips`,`neighborhood`,`region_id`,`size_rank`etc.
+
+### 3.5.1 unique zip codes
+```{r}
+unique_zips_merged =
+  dataset3_merged |>
+  distinct(zip_code) |>
+  nrow()
+print(unique_zips_merged)
+```
+### 3.5.2 unique neighborhoods
+```{r}
+unique_neighborhoods_merged =
+  dataset3_merged |>
+  drop_na(neighborhood) |>
+  distinct(neighborhood) |>
+  nrow()
+print(unique_neighborhoods_merged)
+```
+
+### 3.5.3 unique zip codes in `zip_codes`
+```{r}
+zip_codes_only =
+  zip_codes |>
+  distinct(zip_code) |>
+  anti_join(zori |> distinct(zip_code), by = "zip_code")
+print(zip_codes_only)
+```
+
+### 3.5.4 top 10 price drops
+```{r}
+top10_drops =
+  zori_rent_price |>
+  drop_na(rent_price) |>
+  filter(year == c("2020","2021"), month == "01", day == "31") |> 
+  select(zip_code, year, rent_price) |>
+  pivot_wider(
+    names_from = year, 
+    values_from = rent_price,
+    names_prefix = "year_") |>
+  mutate(drop = year_2020 - year_2021) |>
+  arrange(desc(drop)) |>
+  slice_head(n = 10)
+print(top10_drops)
+```
