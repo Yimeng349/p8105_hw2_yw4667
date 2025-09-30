@@ -49,6 +49,7 @@ pols_month =
   filter(prez_dem_or_prez_gop == 1)|>
   select(-day,-prez_dem_or_prez_gop)|>
   select(year,month,everything())
+print(pols_month)
 ```
 
 ## 1.2 snp
@@ -86,6 +87,7 @@ snp =
 )|>
   select(-day)|>
   select(year,month,everything())
+print(snp)
 ```
 ## 1.3 unemployment
 ```{r}
@@ -118,12 +120,14 @@ unemployment =
     month = as.factor(month),
     year = as.factor(year)) |>
     select(year,month,everything())
+print(unemployment)
 ```
 ## 1.4 dataset1 merged
 ```{r}
 dataset1_merged = 
   full_join(pols_month, snp, by = c("year","month")) |>
   full_join(unemployment, by = c("year","month"))
+print(dataset1_merged)
 ```
 
 ## 1.5 descriptions
@@ -142,7 +146,7 @@ The final dataset`dataset1_merged`combined all three sources, using full joins o
 ```{r}
 Mr_Trash_wheel = 
   read_excel(
-    "./trashwheel_datasets/202409 Trash Wheel Collection Data.xlsx",
+    "./trashwheel_datasets/202509 Trash Wheel Collection Data.xlsx",
     sheet = 1,
     na = c("NA", "", "."),
     skip = 1) |>
@@ -152,30 +156,33 @@ Mr_Trash_wheel =
   select(-sports_balls,-x15,-x16) |>
   mutate(sports_balls_rounded = as.integer(sports_balls_rounded)) |>
   mutate(year = as.double(year))
+print(Mr_Trash_wheel)
 ```
 
 ## 2.2 Professor Trash Wheel sheet
 ```{r}
 Prof_Trash_wheel = 
   read_excel(
-    "./trashwheel_datasets/202409 Trash Wheel Collection Data.xlsx",
+    "./trashwheel_datasets/202509 Trash Wheel Collection Data.xlsx",
     sheet = 2,
     na = c("NA", "", "."),
     skip = 1) |>
   janitor::clean_names() |>
   drop_na(dumpster)
+print(Prof_Trash_wheel)
 ```
 
 ## 2.3 Gwynnda sheet
 ```{r}
 Gwynnda = 
   read_excel(
-    "./trashwheel_datasets/202409 Trash Wheel Collection Data.xlsx",
-    sheet = 3,
-    na = c("NA", "", "."),
-    skip = 1) |>
+  "./trashwheel_datasets/202509 Trash Wheel Collection Data.xlsx",
+  sheet = 4,
+  range = cell_limits(c(2, 1), c(266, 12)),
+  na = c("NA", "", "."))  |>
   janitor::clean_names() |>
-  drop_na(dumpster) 
+  drop_na(dumpster)
+print(Gwynnda)
 ```
 
 ## 2.4 dataset2 merged
@@ -183,6 +190,7 @@ Gwynnda =
 dataset2_merged = 
   full_join(Mr_Trash_wheel, Prof_Trash_wheel, by = c("dumpster","month","year","date","weight_tons","volume_cubic_yards","plastic_bottles","polystyrene","cigarette_butts","plastic_bags","wrappers","homes_powered")) |>
   full_join(Gwynnda, by = c("dumpster","month","year","date","weight_tons","volume_cubic_yards","plastic_bottles","polystyrene","cigarette_butts","plastic_bags","wrappers","homes_powered"))
+print(dataset2_merged)
 ```
 
 ## 2.5 descriptions
@@ -193,6 +201,7 @@ The resulting dataset contains information from all three Trash Wheel collectors
 Prof_Trash_wheel |>
   drop_na(weight_tons) |>
   summarize(total_weight_tons = sum(weight_tons))
+print(Prof_Trash_wheel)
 ```
 
 ### 2.5.2 total cigarette butts (Gwynnda June 2022)
@@ -200,9 +209,8 @@ Prof_Trash_wheel |>
 Gwynnda|>
   filter(year == "2022", month == "June") |>
   summarize(total_cigarette_butts = sum(cigarette_butts))
+print(Gwynnda)
 ```
-
-
 
 # Problem 3
 ## 3.1 zip codes dataset
@@ -218,6 +226,7 @@ zip_codes =
   arrange(zip_code, year,month,day) |>
   mutate(year = if_else(year == "07", "2007", year)) |>
   select(county,zip_code,year,month,day,everything())
+print(zip_codes)
 ```
 
 ## 3.2 zori dataset
@@ -229,6 +238,7 @@ zori =
   janitor::clean_names() |>
   rename(zip_code = region_name,county = county_name) |>
   mutate(zip_code = as.character(zip_code))
+print(zori)
 ```
 
 ## 3.3 zori rent price dataset
@@ -247,13 +257,14 @@ zori_rent_price =
   arrange(zip_code, date) |>
   separate(date, into = c("year","month","day"), sep = "_") |>
   select(county,zip_code,year,month,day,everything())
+print(zori_rent_price)
 ```
 
 ## 3.4 dataset3 merged
 ```{r}
 dataset3_merged = 
   full_join(zip_codes,zori_rent_price,by = c("zip_code","county","year","month","day"))
-dataset3_merged
+print(dataset3_merged)
 ```
 
 ## 3.5 descriptions
@@ -286,19 +297,28 @@ zip_codes_only =
 print(zip_codes_only)
 ```
 
-### 3.5.4 top 10 price drops
+### 3.5.4 possible explanation about the unique zipcodes
+These ZIP codes in Manhattan, New York, are excluded from Zillow's database primarily because they are not typical residential areas and lack sufficient real estate transaction data.
+
+For example, `10008` is the location of the New York Stock Exchange, a purely commercial and financial district with no residential properties. 
+
+Another example, `10020`, serves the Rockefeller Center, which is a complex of offices, studios, and retail spaces, with almost no ordinary homes available for valuation.
+
+These areas either have no housing stock, or the properties are too unique and rarely traded, making it impossible for Zillow's automated valuation model to generate a meaningful "Zestimate".
+
+### 3.5.5 top 10 price drops
 ```{r}
 top10_drops =
   zori_rent_price |>
-  drop_na(rent_price) |>
-  filter(year == c("2020","2021"), month == "01", day == "31") |> 
+  filter(year %in% c("2020","2021"), month == "01", day == "31") |> 
   select(zip_code, year, rent_price) |>
   pivot_wider(
     names_from = year, 
     values_from = rent_price,
-    names_prefix = "year_") |>
-  mutate(drop = year_2020 - year_2021) |>
+    names_prefix = "price_of_") |>
+  mutate(drop = price_of_2020 - price_of_2021) |>
   arrange(desc(drop)) |>
-  slice_head(n = 10)
+  drop_na(drop) |>
+  head(n = 10)
 print(top10_drops)
 ```
